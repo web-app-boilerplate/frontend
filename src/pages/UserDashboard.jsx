@@ -2,6 +2,7 @@ import { useContext, useEffect, useState } from 'react'
 import { AuthContext } from '../context/AuthContext'
 import { getUserById, updateUser } from '../api/user'
 import logger from '../utils/logger'
+import { Menu } from '../components/menu'
 
 const UserDashboard = () => {
   const { user, token } = useContext(AuthContext)
@@ -37,21 +38,24 @@ const UserDashboard = () => {
   if (!userData) return <p>Loading...</p>
 
   return (
-    <div style={{ padding: '2rem' }}>
-      <h2>Welcome, {userData.name}</h2>
-      <p>Email: {userData.email}</p>
-      <p>Credit: {userData.credit}</p>
-      <p>Role: {userData.role}</p>
-
-      <h3>Update Name</h3>
-      <input
-        type='text'
-        value={editName}
-        onChange={(e) => setEditName(e.target.value)}
-      />
-      <button onClick={handleUpdate}>Update</button>
-
-      {message && <p>{message}</p>}
+    <div className='min-h-screen flex flex-col'>
+      <Menu />
+      <main className='flex-grow container mx-auto px-6 flex flex-col items-center justify-center text-center'>
+        <div style={{ padding: '2rem' }}>
+          <h2>Welcome, {userData.name}</h2>
+          <p>Email: {userData.email}</p>
+          <p>Credit: {userData.credit}</p>
+          <p>Role: {userData.role}</p>
+          <h3>Update Name</h3>
+          <input
+            type='text'
+            value={editName}
+            onChange={(e) => setEditName(e.target.value)}
+          />
+          <button onClick={handleUpdate}>Update</button>
+          {message && <p>{message}</p>}
+        </div>
+      </main>
     </div>
   )
 }
