@@ -5,7 +5,7 @@ import logger from '../utils/logger'
 import { Menu } from '../components/menu'
 
 const UserDashboard = () => {
-  const { user, token } = useContext(AuthContext)
+  const { user, isReady } = useContext(AuthContext)
   const [userData, setUserData] = useState(null)
   const [editName, setEditName] = useState('')
   const [message, setMessage] = useState('')
@@ -13,7 +13,7 @@ const UserDashboard = () => {
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        const data = await getUserById(user.id, token)
+        const data = await getUserById(user.id)
         setUserData(data)
         setEditName(data.name)
       } catch (err) {
@@ -21,11 +21,11 @@ const UserDashboard = () => {
       }
     }
     fetchUser()
-  }, [user, token])
+  }, [user])
 
   const handleUpdate = async () => {
     try {
-      const updated = await updateUser(user.id, { name: editName }, token)
+      const updated = await updateUser(user.id, { name: editName })
       setUserData(updated)
       setMessage('Profile updated successfully!')
       logger.info('User updated', updated)
@@ -36,6 +36,8 @@ const UserDashboard = () => {
   }
 
   if (!userData) return <p>Loading...</p>
+  // Wait until AuthContext is ready before calling API
+  if (!isReady) return <div>Loading...</div>
 
   return (
     <div className='min-h-screen flex flex-col'>

@@ -5,7 +5,7 @@ import logger from '../utils/logger'
 import { Menu } from '../components/menu'
 
 const AdminDashboard = () => {
-  const { token } = useContext(AuthContext)
+  const { isReady } = useContext(AuthContext)
   const [users, setUsers] = useState([])
   const [pagination, setPagination] = useState({
     page: 1,
@@ -19,7 +19,7 @@ const AdminDashboard = () => {
   const fetchUsers = async (page = 1, limit = 10) => {
     try {
       setLoading(true)
-      const data = await getAllUsers(token, page, limit) // make sure API accepts page & limit
+      const data = await getAllUsers(page, limit) // make sure API accepts page & limit
       setUsers(data.users || [])
       setPagination(data.pagination || {})
     } catch (err) {
@@ -34,7 +34,8 @@ const AdminDashboard = () => {
   }, [])
 
   if (error) return <p style={{ color: 'red' }}>{error}</p>
-
+  // Wait until AuthContext is ready before calling API
+  if (!isReady) return <div>Loading...</div>
   return (
     <div className='min-h-screen flex flex-col'>
       <Menu />

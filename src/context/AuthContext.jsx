@@ -1,28 +1,22 @@
 import { createContext, useState, useEffect } from 'react'
 import axios from 'axios'
+import api from '../api/api'
 
 export const AuthContext = createContext()
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null)
-  const [token, setToken] = useState(null)
+  // Initialize from localStorage immediately
+  const savedUser = JSON.parse(localStorage.getItem('user'))
+  const savedToken = localStorage.getItem('token')
 
-  // Load saved user/token from localStorage on mount
+  const [user, setUser] = useState(savedUser)
+  const [token, setToken] = useState(savedToken)
+  const [isReady, setIsReady] = useState(false) // flag to indicate context ready
+
+  // Mark context ready after initialization
   useEffect(() => {
-    const savedUser = JSON.parse(localStorage.getItem('user'))
-    const savedToken = localStorage.getItem('token')
-    const savedRefreshToken = localStorage.getItem('refreshToken')
-
-    if (savedUser && savedToken) {
-      setUser(savedUser)
-      setToken(savedToken)
-    }
-
-    // Optionally, you could validate token here
+    setIsReady(true)
   }, [])
-
-  // Axios instance
-  const api = axios.create({ baseURL: '/api' })
 
   // Attach token to all requests
   api.interceptors.request.use((config) => {
@@ -34,7 +28,16 @@ export const AuthProvider = ({ children }) => {
   api.interceptors.response.use(
     (response) => response,
     async (error) => {
-      if (error.response?.status === 401) {
+      const originalRequest = error.config
+
+      // Prevent retrying the refresh endpoint itself
+      if (
+        error.response?.status === 401 &&
+        !originalRequest._retry &&
+        originalRequest.url !== '/auth/refresh-token'
+      ) {
+        originalRequest._retry = true // mark as retried
+
         const refreshToken = localStorage.getItem('refreshToken')
         if (!refreshToken) {
           logoutUser()
@@ -43,23 +46,23 @@ export const AuthProvider = ({ children }) => {
 
         try {
           // Call refresh token endpoint
-          const res = await axios.post('/api/auth/refresh-token', {
-            token: refreshToken,
-          })
-          const newToken = res.data.accessToken
+          const res = await api.post('/auth/refresh-token', { refreshToken })
+          const { accessToken: newToken, refreshToken: newRefresh } = res.data
 
           // Update token in state and localStorage
           setToken(newToken)
           localStorage.setItem('token', newToken)
+          if (newRefresh) localStorage.setItem('refreshToken', newRefresh)
 
           // Retry the original request with new token
-          error.config.headers.Authorization = `Bearer ${newToken}`
-          return axios(error.config)
+          originalRequest.headers['Authorization'] = `Bearer ${newToken}`
+          return axios(originalRequest)
         } catch (err) {
           logoutUser()
           return Promise.reject(err)
         }
       }
+
       return Promise.reject(error)
     }
   )
@@ -83,7 +86,9 @@ export const AuthProvider = ({ children }) => {
   }
 
   return (
-    <AuthContext.Provider value={{ user, token, api, loginUser, logoutUser }}>
+    <AuthContext.Provider
+      value={{ user, token, api, isReady, loginUser, logoutUser }}
+    >
       {children}
     </AuthContext.Provider>
   )
